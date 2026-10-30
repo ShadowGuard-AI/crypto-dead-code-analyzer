@@ -1,11 +1,6 @@
 import argparse
 import logging
-import os
 import sys
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.exceptions import InvalidSignature
-
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -23,7 +18,11 @@ def analyze_contract(contract_code):
 
     findings = []
 
-    # Example 1: Check for unused cryptographic functions
+    # The checks below count mentions in the raw text. That is a rough
+    # signal, not a call graph: a name that appears once has no call site
+    # besides its own mention, which is worth flagging, but a mention
+    # inside a comment or a string counts the same as real code, so the
+    # findings are prompts to look, not proof that code is dead.
     if "hashlib.sha256" in contract_code and contract_code.count("hashlib.sha256") <= 1: # example usage condition
         findings.append("Warning: 'hashlib.sha256' is used infrequently, potentially redundant.")
 
@@ -128,183 +127,8 @@ def main():
 
 
 if __name__ == "__main__":
-    # Example usage:
-    # python main.py my_contract.sol
-    # python main.py my_contract.sol -v
-    # python main.py my_contract.sol -s
-    # python main.py my_contract.sol -v -s
-
-    #Example Contract file.  Needs to exist for the tool to be useful.
-    example_contract = """
-    pragma solidity ^0.8.0;
-
-    import "hardhat/console.sol";
-    import "hardhat/console.sol"; // redundant import, possible dead code.
-
-    import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-    import "@openzeppelin/contracts/access/Ownable.sol";
-
-
-    contract MyToken is ERC20, Ownable {
-        using SafeMath for uint256;
-
-        mapping(address => bool) public isBlacklisted;
-        uint256 public totalSupplyLimit = 1000000 * (10 ** decimals()); // 1 million tokens limit
-        string private _name;
-        string private _symbol;
-
-
-        event TokenCreated(address creator, string name, string symbol);
-        event Blacklisted(address account);
-        event RemovedFromBlacklist(address account);
-
-        constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {
-            _name = name_;
-            _symbol = symbol_;
-            _mint(msg.sender, 1000 * (10 ** decimals())); // Mint initial supply to the deployer
-            emit TokenCreated(msg.sender, name_, symbol_);
-        }
-
-        // Custom Minting Function with supply limit
-        function mint(address to, uint256 amount) public onlyOwner {
-            require(totalSupply() + amount <= totalSupplyLimit, "Mint amount exceeds total supply limit.");
-            _mint(to, amount);
-        }
-
-        // Blacklisting mechanism (simplified, can be improved)
-        function blacklist(address account) public onlyOwner {
-            isBlacklisted[account] = true;
-            emit Blacklisted(account);
-        }
-
-        // Remove address from the blacklist
-        function removeFromBlacklist(address account) public onlyOwner {
-            isBlacklisted[account] = false;
-            emit RemovedFromBlacklist(account);
-        }
-
-        // Override transfer functions to check if sender or recipient is blacklisted
-        function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override {
-            require(!isBlacklisted[from] && !isBlacklisted[to], "Account is blacklisted");
-            super._beforeTokenTransfer(from, to, amount);
-        }
-
-
-        function test_hash(bytes memory input) public pure returns (bytes32) {
-          bytes32 hashed = keccak256(input); //Example Crypto Operation
-          console.log(hashed);
-          return hashed;
-        }
-
-
-        function get_name() public view returns(string memory){
-          return _name;
-        }
-
-        function useless_function(uint256 x, uint256 y) public pure returns (uint256) {
-           uint256 z = x + y;
-           z = x * z;
-           return z;
-
-        }
-    }
-
-    library SafeMath {
-        function tryAdd(uint256 a, uint256 b) internal pure returns (bool, uint256) {
-            unchecked {
-                uint256 sum = a + b;
-                if (sum < a) {
-                    return (false, 0);
-                }
-                return (true, sum);
-            }
-        }
-
-        function trySub(uint256 a, uint256 b) internal pure returns (bool, uint256) {
-            unchecked {
-                if (b > a) {
-                    return (false, 0);
-                }
-                return (true, a - b);
-            }
-        }
-
-        function tryMul(uint256 a, uint256 b) internal pure returns (bool, uint256) {
-            unchecked {
-                if (a == 0) {
-                    return (true, 0);
-                }
-                uint256 c = a * b;
-                if (c / a != b) {
-                    return (false, 0);
-                }
-                return (true, c);
-            }
-        }
-
-        function tryDiv(uint256 a, uint256 b) internal pure returns (bool, uint256) {
-            unchecked {
-                if (b == 0) {
-                    return (false, 0);
-                }
-                return (true, a / b);
-            }
-        }
-
-        function tryMod(uint256 a, uint256 b) internal pure returns (bool, uint256) {
-            unchecked {
-                if (b == 0) {
-                    return (false, 0);
-                }
-                return (true, a % b);
-            }
-        }
-
-
-        function add(uint256 a, uint256 b) internal pure returns (uint256) {
-            return a + b;
-        }
-
-        function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-            return a - b;
-        }
-
-        function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-            return a * b;
-        }
-
-        function div(uint256 a, uint256 b) internal pure returns (uint256) {
-            return a / b;
-        }
-
-        function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-            return a % b;
-        }
-
-        function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-            unchecked {
-                require(b <= a, errorMessage);
-                return a - b;
-            }
-        }
-
-        function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-            unchecked {
-                require(b > 0, errorMessage);
-                return a / b;
-            }
-        }
-
-        function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-            unchecked {
-                require(b > 0, errorMessage);
-                return a % b;
-            }
-        }
-    }
-    """
-    if not os.path.exists("my_contract.sol"):
-        with open("my_contract.sol", "w") as f:
-            f.write(example_contract)
-
+    # Earlier versions wrote a bundled example contract to my_contract.sol
+    # in the caller's working directory before main() ran, so even a --help
+    # call created a file the user never asked for. The tool takes its
+    # contract as an argument; it should not manufacture one on the side.
     main()
