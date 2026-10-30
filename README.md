@@ -1,3 +1,5 @@
+![Banner](banner.png)
+
 # crypto-dead-code-analyzer
 Analyzes smart contracts for unreachable or redundant code, highlighting potential vulnerabilities and optimization opportunities. - Focused on Basic cryptographic operations
 
