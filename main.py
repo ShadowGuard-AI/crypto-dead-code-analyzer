@@ -1,5 +1,6 @@
 import argparse
 import logging
+import re
 import sys
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -30,9 +31,22 @@ def analyze_contract(contract_code):
     if "rsa.generate_private_key" in contract_code and contract_code.count("rsa.generate_private_key") <=1:
          findings.append("Warning: 'rsa.generate_private_key' function not consistently used, potential optimization opportunity.")
 
-    # Example 3: Check for functions that are defined but never called.
-    # This requires more sophisticated parsing and symbol table analysis.
-    # Placeholder - would need a proper parser and static analysis.
+    # Defined but never called check: a text level scan, not a parser.
+    # It finds Solidity "function name(" declarations and Python
+    # "def name(" definitions, then counts mentions of each name outside
+    # its own definition. A name with no other mention has no call site
+    # in the file. This does not parse reachability beyond name
+    # references: a mention in a comment or string counts as a reference,
+    # and entry points called from outside the file will be flagged.
+    defined = []
+    for match in re.finditer(r"\bfunction\s+([A-Za-z_]\w*)\s*\(", contract_code):
+        defined.append(match.group(1))
+    for match in re.finditer(r"\bdef\s+([A-Za-z_]\w*)\s*\(", contract_code):
+        defined.append(match.group(1))
+    for name in dict.fromkeys(defined):
+        references = len(re.findall(r"\b" + re.escape(name) + r"\b", contract_code))
+        if references <= 1:
+            findings.append(f"Warning: Function '{name}' is defined but never called or referenced elsewhere in the file, potential dead code.")
 
     return findings
 

@@ -1,7 +1,7 @@
 ![Banner](banner.png)
 
 # crypto-dead-code-analyzer
-Analyzes smart contracts for unreachable or redundant code, highlighting potential vulnerabilities and optimization opportunities. - Focused on Basic cryptographic operations
+Analyzes smart contract and Python source text for potential dead code with a text level scan: it reports functions defined but never called or referenced elsewhere in the file, alongside single mention checks for two Python library calls. The scan counts name references only and does not parse reachability beyond name references. - Focused on Basic cryptographic operations
 
 ## Install
 `git clone https://github.com/ShadowGuardAI/crypto-dead-code-analyzer`
