@@ -43,6 +43,9 @@ def analyze_contract(contract_code):
         defined.append(match.group(1))
     for match in re.finditer(r"\bdef\s+([A-Za-z_]\w*)\s*\(", contract_code):
         defined.append(match.group(1))
+    # I keep each defined name once. Two overloads, or a Solidity
+    # function and a Python function with the same name, share a
+    # single reference count and a single warning between them.
     for name in dict.fromkeys(defined):
         references = len(re.findall(r"\b" + re.escape(name) + r"\b", contract_code))
         if references <= 1:
@@ -65,6 +68,9 @@ def simulate_vulnerability(contract_code):
     """
     try:
         #Insecure comparison example:
+        # I need both texts anywhere in the file, not near each other.
+        # A comparison in one function and a hash call in another,
+        # unrelated, still trigger this warning together.
         if "==" in contract_code and "hashlib.sha256" in contract_code:
             logging.warning("Potential Vulnerability: Insecure comparison used with hash. Check for timing attacks and collision risks.")
             return True
@@ -115,6 +121,9 @@ def main():
         # Perform dead code analysis
         findings = analyze_contract(contract_code)
         if findings:
+            # I send findings to the log and finish with a normal exit
+            # either way. A file full of dead code and a clean file are
+            # told apart only by these warning lines.
             logging.warning("Potential dead code findings:")
             for finding in findings:
                 logging.warning(f"  - {finding}")
